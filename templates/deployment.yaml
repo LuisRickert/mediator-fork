@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ template "app.name" . }}"
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
+    app.kubernetes.io/instance: {{ include "app.revision" . }}
+    app.kubernetes.io/part-of: rse
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      {{- include "app.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "app.labels" . | nindent 8 }}
+      annotations:
+        {{- include "app.metricsAnnotations" . | nindent 8 }}
+{{- if .Values.podAnnotations }}
+{{ toYaml .Values.podAnnotations | indent 8 }}
+{{- end }}
+    spec:
+      securityContext:
+{{- include "app.securitycontext" . | nindent 8 }}
+      imagePullSecrets:
+        - name: {{ .Values.image.pullSecrets }}
+      containers:
+      - name: "{{ template "app.name" . }}"
+        image: "{{ .Values.image.repository }}/{{ .Values.image.name }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+        env:
+          - name: SCHEMA
+            value: "{{ .Values.postgres.schema }}"
+          - name: DB_USER
+            valueFrom:
+              secretKeyRef:
+              {{- if and (.Values.postgres.superUser.passwordSecret) (.Values.postgres.superUser.usernameSecret) }}
+                name: {{ .Values.postgres.superUser.usernameSecret.name | quote }}
+                key: {{ .Values.postgres.superUser.usernameSecret.key | quote }}
+              {{- else }}
+                name: {{ include "app.fullname" . | quote }}
+                key: {{ "postgres-username" | quote }}
+              {{- end }}
+          - name: DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+              {{- if and (.Values.postgres.superUser.passwordSecret) (.Values.postgres.superUser.usernameSecret) }}
+                name: {{ .Values.postgres.superUser.passwordSecret.name | quote }}
+                key: {{ .Values.postgres.superUser.passwordSecret.key | quote }}
+              {{- else }}
+                name: {{ include "app.fullname" . | quote }}
+                key: {{ "postgres-password" | quote }}
+              {{- end }}
+          - name: MEDIATOR_CONTROLLER_ADMIN_API_KEY
+            value: {{ .Values.mediator.controller.key | quote }}
+          - name: MEDIATOR_AGENT_ADMIN_API_KEY
+            value: {{ .Values.mediator.admin.key | quote }}
+          - name: ACAPY_WALLET_KEY
+            value: {{ .Values.mediator.wallet.key | quote }}
+          - name: MEDIATOR_AGENT_ADMIN_MODE
+            value: {{ .Values.mediator.agent.mode }}
+          - name: MEDIATOR_CONTROLLER_WEBHOOK
+            value: {{ .Values.mediator.controller.webhook | quote }}
+          - name: MEDIATOR_AGENT_LABEL
+            value: {{ .Values.mediator.agent.label | quote }}
+          - name: MEDIATOR_AGENT_HTTP_IN_PORT
+            value: {{ .Values.mediator.agent.http_in_port | quote }}
+          - name: MEDIATOR_AGENT_WS_IN_PORT
+            value: {{ .Values.mediator.agent.ws_in_port | quote }}
+          - name: MEDIATOR_AGENT_HTTP_ADMIN_PORT
+            value: {{ .Values.mediator.agent.http_admin_port | quote }}
+          - name: MEDIATOR_ALIAS
+            value: {{ .Values.mediator.alias | quote }}
+          - name: LOG_LEVEL
+            value: {{ .Values.mediator.log.level | quote }}
+          - name: MEDIATOR_ENDPOINT_URL
+            value: {{ .Values.mediator.endpoint.url | quote }}
+          - name: ENV
+            value: {{ .Values.mediator.env | quote }}
+          - name: ACAPY_WALLET_NAME
+            value: {{ .Values.postgres.database | quote }}
+          - name: MEDIATOR_ARG_FILE
+            value: {{ .Values.mediator.arg_file | quote }}
+        ports:
+          - name: httpin
+            containerPort: 3000
+            protocol: TCP
+          - name: wsin
+            containerPort: 3001
+            protocol: TCP
+          - name: httpadmin
+            containerPort: 3002
+            protocol: TCP
+          - name: mediator
+            containerPort: 3010
+            protocol: TCP
+        resources:
+{{ toYaml .Values.resources | indent 10 }}

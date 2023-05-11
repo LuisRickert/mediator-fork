@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "app.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  ports:
+  - name: httpin
+    port: {{ .Values.service.httpin_port }}
+    targetPort: {{ .Values.service.httpin_port }}
+  - name: wsin
+    port: {{ .Values.service.wsin_port }}
+    targetPort: {{ .Values.service.wsin_port }}
+  - name: httpadmin
+    port: {{ .Values.service.httpadmin_port }}
+    targetPort: {{ .Values.service.httpadmin_port }}
+  selector:
+    {{- include "app.selectorLabels" . | nindent 4 }}

@@ -1,0 +1,26 @@
+image: nexus.tech.vereign.com:6001/helm:3.5.3
+
+include:
+  - project: '${HELPERS_PATH}'
+    file: '${HELPERS_FILE}'
+
+stages:
+  - lint
+  - integration
+
+helm-lint:
+  extends: .helm-lint
+  stage: lint
+  tags:
+    - amd64-docker
+
+helm_package:
+  stage: integration
+  image: dtzar/helm-kubectl:3.10.1
+  rules:
+    - if: $CI_TASK == "helm_package" && $CHANNEL
+  script:
+    - helm dependency update .
+    - helm package . -d ./package/${CHANNEL}
+    - export FILE_NAME=$(ls ./package/${CHANNEL}/*.tgz)
+    - 'curl --request POST --user gitlab-ci-token:$CI_JOB_TOKEN --form "chart=@${FILE_NAME}" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/helm/api/${CHANNEL}/charts"'

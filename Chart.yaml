@@ -1,0 +1,10 @@
+apiVersion: v2
+appVersion: v0.0.7
+description: mediator deployment
+name: mediator
+version: 0.1.6
+icon: "https://www.vereign.com/wp-content/themes/vereign2020/images/vereign-logo.svg"
+dependencies:
+  - name: library
+    version: 1.0.0
+    repository: "https://gitlab.com/api/v4/projects/40471958/packages/helm/Integration/"
