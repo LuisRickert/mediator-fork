@@ -2,7 +2,9 @@ apiVersion: v1
 kind: Secret
 metadata:  
   name: ocm-postgres-superuser
-  namespace: ocm
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
   labels: 
     app.kubernetes.io/component: mediator-ocm                                                   
     app.kubernetes.io/instance: mediator                                                        
